@@ -15,6 +15,9 @@ var format = {
   bitDepth: 16,         // 16-bit samples
   sampleRate: 44100     // 44,100 Hz sample rate
 };
+var forbiddenValues = [
+  'kyo'
+];
 
 function playSoundcloud(streamUrl, position) {
   var deferred = Q.defer();
@@ -135,16 +138,37 @@ function playYoutube(trackUrl, position) {
   return deferred.promise;
 }
 
+function filterTrack(track) {
+  if (track.title) {
+    for (var index in forbiddenValues) {
+      var forbiddenValue = forbiddenValues[index];
+      var regexp = new RegExp(forbiddenValue, 'i');
+      if (regexp.test(track.title)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+
 exports.play = function play(track) {
-  if (track.platform === 'soundcloud') {
-    return playSoundcloud(track.streamUrl, track.position);
-  } else if (track.platform === 'youtube') {
-    // /!\ It's actually not possible to resume Youtube for now.
-    // Read more in the `playYoutube` function description.
-    return playYoutube(track.streamUrl);
-  } else {
+  var toBeFiltered = filterTrack(track);
+  if (toBeFiltered) {
     return Q.fcall(function () {
-      throw new Error('Wrong URL or domain not supported.');
+      throw new Error('Filtered track: ' + track.title);
     });
+  } else {
+     if (track.platform === 'soundcloud') {
+      return playSoundcloud(track.streamUrl, track.position);
+    } else if (track.platform === 'youtube') {
+      // /!\ It's actually not possible to resume Youtube for now.
+      // Read more in the `playYoutube` function description.
+      return playYoutube(track.streamUrl);
+    } else {
+      return Q.fcall(function () {
+        throw new Error('Wrong URL or domain not supported.');
+      });
+    }
   }
 };
